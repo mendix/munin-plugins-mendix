@@ -37,7 +37,7 @@ fi
 
 
 # Wheee ;]
-psql -t -A -c "
+psql --cluster $PGCLUSTER -t -A -c "
 SELECT 'tables.value ' || sum(pg_relation_size(table_name::regclass)),
 E'\nindexes.value ' || sum((pg_total_relation_size (table_name::regclass) - pg_relation_size(table_name::regclass)))
 FROM (SELECT ('"'"'"' || table_schema || '"'"'"."'"'"' || table_name || '"'"'"') AS table_name FROM information_schema.tables)
