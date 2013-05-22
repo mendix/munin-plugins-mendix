@@ -1,0 +1,44 @@
+#!/bin/sh
+#
+# Munin Plugin for monitoring per-user postgresql database size
+# 
+
+# symlink this, e.g. pg_database_size_8.4_main -> pg_database_size_
+
+PGCLUSTER=`basename $0 | sed 's/^pg_database_size_//g' | sed 's!_!/!'`
+if [ "x$PGCLUSTER" = "x" ]; then
+	echo "symlink this plugin"
+	exit 1
+fi
+
+if [ "$1" = "autoconf" ]; then
+	echo no
+	exit 0
+fi
+
+if [ "$1" = "config" ]; then
+	cat << EOT
+graph_args --base 1024 -l 0
+graph_vlabel Database size
+graph_title PostgreSQL Database Size of cluster $PGCLUSTER
+graph_category PostgreSQL
+graph_info This graph shows database size of all databases
+EOT
+
+	# now, get a userlist from postgres...
+	psql --cluster $PGCLUSTER -t -A -c "SELECT pg_database.datname || '.label ' || pg_database.datname || E'\\n' || pg_database.datname || E'.draw LINE2\\n' || pg_database.datname || '.info database size for database ' || pg_database.datname FROM pg_database WHERE pg_database.datistemplate = 'f' ORDER BY pg_database.datname;" postgres
+
+#	cat << EOT
+#_total.label total
+#_total.draw LINE2
+#_total.info Total database cluster size
+#EOT
+
+	exit 0
+fi
+
+# Wheee ;]
+psql --cluster $PGCLUSTER -t -A -c "SELECT pg_database.datname || '.value ' || pg_database_size(pg_database.datname) AS size FROM pg_database WHERE pg_database.datistemplate = 'f' ORDER BY pg_database.datname;" postgres
+#psql --cluster $PGCLUSTER -t -A -c "SELECT '_total.value ' || sum(pg_database_size(pg_database.datname)) FROM pg_database WHERE pg_database.datistemplate = 'f';" postgres
+
+exit 0

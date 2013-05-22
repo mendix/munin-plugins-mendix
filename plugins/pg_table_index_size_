@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+
+PGCLUSTER=`basename $0 | sed 's/^pg_table_index_size_//g' | sed 's!_!/!'`
+DATABASE=`echo $PGCLUSTER | awk '{split($0,array,"_")} END{print array[2]}'`
+PGCLUSTER=`echo $PGCLUSTER | awk '{split($0,array,"_")} END{print array[1]}'`
+
+if [ "x$PGCLUSTER" = "x" ]; then
+	echo "symlink this plugin"
+	exit 1
+fi
+
+if [ "$1" = "autoconf" ]; then
+	echo yes
+	exit 0
+fi
+
+if [ "$1" = "config" ]; then
+	cat << EOT
+graph_args -l 0
+graph_vlabel table/index size distribution
+graph_title table/index size distribution for $PGCLUSTER/$DATABASE
+graph_category PostgreSQL
+graph_info This graph shows the distribution of table and index size in a database
+graph_order
+tables.label tables
+tables.draw AREA
+tables.min 0
+tables.type GAUGE
+indexes.label indexes
+indexes.draw STACK
+indexes.min 0
+indexes.type GAUGE
+EOT
+	exit 0
+fi
+
+
+# Wheee ;]
+psql -t -A -c "
+SELECT 'tables.value ' || sum(pg_relation_size(table_name::regclass)),
+E'\nindexes.value ' || sum((pg_total_relation_size (table_name::regclass) - pg_relation_size(table_name::regclass)))
+FROM (SELECT ('"'"'"' || table_schema || '"'"'"."'"'"' || table_name || '"'"'"') AS table_name FROM information_schema.tables)
+AS all_tables;" $DATABASE | sed 's/|//'
+
+exit 0

@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# Example Munin Plugin for monitoring per-user postgresql transactions and tuple mutations
+# 
+# (c)2012 Mendix B.V.
+# Frank Baalbergen <frank.baalbergen@mendix.com>
+#
+
+# symlink this, e.g. pg_stat_database_8.4_main_dbuser -> pg_stat_database_
+
+PGCLUSTER=`basename $0 | sed 's/^pg_stat_database_//g' | sed 's!_!/!'`
+DATABASE=`echo $PGCLUSTER | awk '{split($0,array,"_")} END{print array[2]}'`
+PGCLUSTER=`echo $PGCLUSTER | awk '{split($0,array,"_")} END{print array[1]}'`
+if [ "x$PGCLUSTER" = "x" ]; then
+	echo "symlink this plugin"
+	exit 1
+fi
+
+if [ "$1" = "autoconf" ]; then
+	echo yes
+	exit 0
+fi
+
+if [ "$1" = "config" ]; then
+	cat << EOT
+graph_args -l 0
+graph_vlabel xact/tuple mutations per second
+graph_title xact/tuple mutations for database $DATABASE at cluster $PGCLUSTER
+graph_category PostgreSQL
+graph_info This graph shows per-database amount of xact and tuple mutations
+graph_order
+xact_commit.label xact commit
+xact_commit.draw LINE2
+xact_commit.min 0
+xact_commit.type DERIVE
+xact_commit.info Number of commits
+xact_rollback.label xact rollback
+xact_rollback.draw LINE2
+xact_rollback.min 0
+xact_rollback.type DERIVE
+xact_rollback.info Number of rollbacks
+tup_inserted.label tuples inserted
+tup_inserted.draw LINE2
+tup_inserted.min 0
+tup_inserted.type DERIVE
+tup_inserted.info Number of inserts
+tup_updated.label tuples updated
+tup_updated.draw LINE2
+tup_updated.min 0
+tup_updated.type DERIVE
+tup_updated.info Number of updates
+tup_deleted.label tuples deleted
+tup_deleted.draw LINE2
+tup_deleted.min 0
+tup_deleted.type DERIVE
+tup_deleted.info Number of deletes
+EOT
+	exit 0
+fi
+
+
+# Wheee ;]
+psql --cluster $PGCLUSTER -t -A -c "select 'xact_commit.value ' || xact_commit, 
+									E'\nxact_rollback.value ' || xact_rollback, 
+									E'\ntup_inserted.value ' || tup_inserted, 
+									E'\ntup_updated.value ' || tup_updated, 
+									E'\ntup_deleted.value ' || tup_deleted 
+									from pg_stat_database where datname = '$DATABASE';" postgres | sed 's/|//'
+
+exit 0

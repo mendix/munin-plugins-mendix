@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# # Mendix XAS 2
+# Example Munin Plugin for monitoring per-user postgresql connections
+# Work In Progress
+# $Id: pg_stat_activity_ 10 2008-09-18 16:20:00Z Hans van Kranenburg, Mendix $
+# 
+# (c)2008 Mendix B.V.
+# Hans van Kranenburg <hans.van.kranenburg@mendix.com>
+#
+
+# symlink this, e.g. pg_stat_activity_8.2_main -> pg_stat_activity_
+
+PGCLUSTER=`basename $0 | sed 's/^pg_stat_activity_//g' | sed 's!_!/!'`
+if [ "x$PGCLUSTER" = "x" ]; then
+	echo "symlink this plugin"
+	exit 1
+fi
+
+if [ "$1" = "autoconf" ]; then
+	echo yes
+	exit 0
+fi
+
+if [ "$1" = "config" ]; then
+	cat << EOT
+graph_args -l 0
+graph_vlabel Connections
+graph_title PostgreSQL Connections to cluster $PGCLUSTER
+graph_category PostgreSQL
+graph_info This graph shows per-user amount of database connections
+graph_order
+EOT
+
+	# now, get a userlist from postgres...
+	psql --cluster $PGCLUSTER -t -A -c "SELECT rolname || '.label ' || rolname || E'\\n' || rolname || E'.draw LINE2 \\n' || rolname || '.info open connections for user ' || rolname FROM pg_roles ORDER BY rolname;" postgres
+
+	cat << EOT
+_total.label total
+_total.draw LINE2
+_total.info Total number of open connections
+_max.label total max
+_max.draw LINE2
+_max.info Total maximum number of open connections
+EOT
+	exit 0
+fi
+
+# Wheee ;]
+psql --cluster $PGCLUSTER -t -A -c "SELECT pg_roles.rolname || '.value ' || count(pg_stat_activity.usename) FROM pg_roles LEFT OUTER JOIN pg_stat_activity ON pg_stat_activity.usename = pg_roles.rolname GROUP BY rolname ORDER BY rolname;" postgres
+psql --cluster $PGCLUSTER -t -A -c "SELECT '_total.value ' || count(*) FROM pg_stat_activity;" postgres
+psql --cluster $PGCLUSTER -t -A -c "SELECT '_max.value ' || setting FROM pg_settings WHERE name = 'max_connections';" postgres
+
+exit 0

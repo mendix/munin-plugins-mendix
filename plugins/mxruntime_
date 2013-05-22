@@ -1,0 +1,20 @@
+#!/bin/sh
+
+if [ "$1" = "autoconf" ]; then
+	echo "no"
+	exit 1
+fi
+
+#APP=`basename $0 | sed 's/^mxruntime_//g'`
+#if [ "x$APP" = "x" ]; then
+#	echo "symlink this plugin"
+#	exit 1
+#fi
+
+if [ "$1" = "config" ]; then
+	m2ee -qq munin_config
+	exit 0
+fi
+
+m2ee -qqq munin_values
+

@@ -1,0 +1,57 @@
+#!/usr/bin/python
+
+import sys
+import os
+from os.path import basename
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import paramiko
+
+host = basename(sys.argv[0]).replace('netapp_diskutilization_','')
+
+if host == '':
+    sys.stderr.write("symlink this plugin like netapp_diskutilization_hostname\n")
+    exit(1)
+
+username = os.getenv('username')
+password = os.getenv('password')
+
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(host, username = username, password = password)
+stdin, stdout, stderr = ssh.exec_command("stats show -d '||' -c -O print_instance_names=off -O print_header=off -e disk:*:(display_name|disk_busy)")
+
+std = stdout.readlines()
+ssh.close()
+
+argc = len(sys.argv)
+if argc > 1 and sys.argv[1] == 'config':
+    print "host_name %s" % host
+    print "graph_title Disk utilization per device"
+    print "graph_args --base 1000 --lower-limit 0 --upper-limit 100 --rigid"
+    print "graph_vlabel Percent"
+    print "graph_category disk"
+    print "graph_width 500"
+
+    for i in std:
+        key_label = i.split('||')[0]
+        key = i.split('||')[0].replace('.', '-')
+        print "%s.label %s" % (key, key_label)
+        print "%s.type GAUGE" % key
+        print "%s.info Utilization of the device" % key
+        print "%s.min 0" % key
+        print "%s.draw LINE1" % key
+
+    exit(0)
+
+else :
+    for i in std:
+        key = i.split('||')[0].replace('.', '-')
+        value = i.split('||')[1]
+        print "%s.value %d" % (key, int(value))
+
+exit(0)
+
+# vim:ft=python:sw=4:ts=4:expandtab
