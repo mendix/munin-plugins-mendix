@@ -1,3 +1,11 @@
+munin-plugins-mendix (0.2-1) unstable; urgency=low
+
+  * New upstream release
+  * d1ebb15 define configuration files in debian/conffiles
+  * bfa6bd5 install files from plugin-conf in /etc/munin/plugin-conf.d
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Thu, 23 May 2013 11:55:19 +0200
+
 munin-plugins-mendix (0.1-1) unstable; urgency=low
 
   * Initial release.
