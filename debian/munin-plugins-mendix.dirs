@@ -1,1 +1,2 @@
 usr/share/munin-mendix/plugins
+etc/munin/plugin-conf.d
