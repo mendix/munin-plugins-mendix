@@ -1,0 +1,8 @@
+[pg_stat_activity_*]
+user munin
+
+[pg_database_size_*]
+user munin
+
+[pg_stat_database_*]
+user munin
