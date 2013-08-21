@@ -1,20 +1,23 @@
-#!/bin/sh
+#!/usr/bin/python
+import sys
+sys.path.insert(1, '/usr/share/m2ee-tools')
+import m2ee
 
-if [ "$1" = "autoconf" ]; then
-	echo "no"
-	exit 1
-fi
+m2ee.logger.setLevel(51)
 
-#APP=`basename $0 | sed 's/^mxruntime_//g'`
-#if [ "x$APP" = "x" ]; then
-#	echo "symlink this plugin"
-#	exit 1
-#fi
+try:
+    command = sys.argv[1]
+except IndexError:
+    command = 'values'
 
-if [ "$1" = "config" ]; then
-	m2ee -qq munin_config
-	exit 0
-fi
-
-m2ee -qqq munin_values
-
+if command == 'autoconf':
+    print("no")
+else:
+    m2ee_instance = m2ee.M2EE()
+    m2ee.munin.print_all(
+        m2ee_instance.client,
+        m2ee_instance.config,
+        m2ee_instance.config.get_munin_options(),
+        [],
+        print_config=(command == 'config')
+    )
