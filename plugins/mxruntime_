@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import sys
-sys.path.insert(1, '/usr/share/m2ee-tools')
 import m2ee
 
 m2ee.logger.setLevel(51)
