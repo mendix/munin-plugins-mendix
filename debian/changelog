@@ -1,3 +1,15 @@
+munin-plugins-mendix (0.3-1) unstable; urgency=low
+
+  [ Jouke Waleson ]
+  * mxruntime_: use python and import m2ee
+
+  [ Pim van den Berg ]
+  * plugins/mxruntime_: remove sys.path.insert /usr/share/m2ee-tools
+  * debian: add gbp.conf
+  * debian/control: suggest python-m2ee
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Thu, 22 Aug 2013 18:36:30 +0200
+
 munin-plugins-mendix (0.2-1) unstable; urgency=low
 
   * New upstream release
