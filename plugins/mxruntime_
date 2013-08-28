@@ -17,6 +17,6 @@ else:
         m2ee_instance.client,
         m2ee_instance.config,
         m2ee_instance.config.get_munin_options(),
-        [],
+        "",
         print_config=(command == 'config')
     )
