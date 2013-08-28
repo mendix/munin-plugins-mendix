@@ -1,3 +1,13 @@
+munin-plugins-mendix (0.4-1) unstable; urgency=low
+
+  [ Hans van Kranenburg ]
+  * reporting on quota needs to be done as root
+
+  [ Jouke Waleson ]
+  * mxruntime: fix stupid bug, name = "", not []
+
+ -- Jouke Waleson <jouke.waleson@mendix.com>  Wed, 28 Aug 2013 14:08:02 +0200
+
 munin-plugins-mendix (0.3-1) unstable; urgency=low
 
   [ Jouke Waleson ]
