@@ -135,7 +135,7 @@ if [ "$1" = "config" ]; then
 	fi
 	echo 'graph_title CPU usage'
 	echo "graph_order system user nice idle" $extinfo
-	echo "graph_args --base 1000 -r --lower-limit 0 --upper-limit $graphlimit"
+	echo "graph_args --base 1000 -r --lower-limit 0"
 	echo 'graph_vlabel %'
 	echo 'graph_scale no'
 	echo 'graph_info This graph shows how CPU time is spent.'
