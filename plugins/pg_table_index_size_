@@ -22,7 +22,6 @@ graph_vlabel table/index size distribution
 graph_title table/index size distribution for $PGCLUSTER/$DATABASE
 graph_category PostgreSQL
 graph_info This graph shows the distribution of table and index size in a database
-graph_order
 tables.label tables
 tables.draw AREA
 tables.min 0
