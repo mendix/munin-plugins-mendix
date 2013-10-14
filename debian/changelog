@@ -1,3 +1,13 @@
+munin-plugins-mendix (0.6-1) unstable; urgency=low
+
+  [ Pim van den Berg ]
+  * plugins/pg_*: remove empty graph_order
+
+  [ Riccardo M. Cefala ]
+  * pg_table_index_size_: Add support for postgres 9.2 for index vs. data graph
+
+ -- Riccardo Cefala <riccardo.cefala@mendix.com>  Mon, 14 Oct 2013 13:57:08 +0200
+
 munin-plugins-mendix (0.5-1) unstable; urgency=low
 
   * Rename cpu-idlefix to cpu
