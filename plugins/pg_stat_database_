@@ -28,7 +28,6 @@ graph_vlabel xact/tuple mutations per second
 graph_title xact/tuple mutations for database $DATABASE at cluster $PGCLUSTER
 graph_category PostgreSQL
 graph_info This graph shows per-database amount of xact and tuple mutations
-graph_order
 xact_commit.label xact commit
 xact_commit.draw LINE2
 xact_commit.min 0

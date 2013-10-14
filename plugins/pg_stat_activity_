@@ -29,7 +29,6 @@ graph_vlabel Connections
 graph_title PostgreSQL Connections to cluster $PGCLUSTER
 graph_category PostgreSQL
 graph_info This graph shows per-user amount of database connections
-graph_order
 EOT
 
 	# now, get a userlist from postgres...
