@@ -1,3 +1,9 @@
+munin-plugins-mendix (0.7-1) unstable; urgency=medium
+
+  * Add avocent_pdu plugin
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Mon, 14 Apr 2014 15:49:22 +0200
+
 munin-plugins-mendix (0.6-1) unstable; urgency=low
 
   [ Pim van den Berg ]
