@@ -1,3 +1,9 @@
+munin-plugins-mendix (0.8-1) unstable; urgency=low
+
+  * Add xenguests plugin to monitor xen memory usage
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Thu, 09 Oct 2014 13:45:15 +0200
+
 munin-plugins-mendix (0.7-1) unstable; urgency=medium
 
   * Add avocent_pdu plugin
