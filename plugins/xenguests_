@@ -41,6 +41,8 @@ class Cluster():
         for domU in os.listdir(dom0_dir):
             if domU == '.info':  # XXX
                 continue
+            if domU.endswith('.swp'):
+                continue
             domUs[domU] = self._read_domU_config(os.path.join(dom0_dir, domU))
         return domUs
 
