@@ -1,0 +1,140 @@
+#!/usr/bin/python
+#
+# Copyright 2012 Hans van Kranenburg <hans.van.kranenburg@mendix.com>
+#
+# This munin plugin fetches monitoring data (current, temperature)from the
+# Avocent PM devices attached to an Avocent ACS using a script on the ACS
+# console server, invoked over ssh (force-command etc...)
+#
+# Besides showing per-pdu current the script can calculate total current per
+# datacenter feed and overall total current drawn, using some configuration hints.
+#
+# Also graphs for temperature are provided.
+#
+# So, how to configure this?
+#
+# On your ACS, add an entry to the authorized_keys file of a user that can execute
+# the pmCommand utility, and force it to run a little script that reads the
+# monitoring values when logging in, like:
+#
+# from="ip.ad.dre.ss",command="/path/to/munin-pmCommand.sh",no-port-forwarding,
+# no-X11-forwarding,no-agent-forwarding,no-pty ssh-rsa AAAAA[...] munin@somewhere
+#
+# The script at /path/to/munin-pmCommand.sh contains:
+#
+# #!/bin/sh
+# /bin/pmCommand current
+# /bin/pmCommand temperature
+#
+# In plugin-conf.d, add a file containing a few hints about where to look and what
+# to do:
+#
+# [avocent_pdu]
+# user someuser
+# timeout 15
+# env.acslogin user@your.acs.example
+# env.id_rsa /home/someuser/.ssh/id_rsa_avocent_pdu
+# env.powertotals {"feed1":{"description":"Datacenter Feed 1","pdus":["power1","power3"]},
+#                  "feed2":{"pdus":["power2","power4"]}}
+#
+# The powertotals will calculate the total current of the mentioned pdu's, and output
+# them as an additional value.
+#
+# TODO:
+# - some sort of pdu name cache, to properly output last know config when the ACS is
+#   not available, to prevent disappearing graphs...
+
+import sys,re,os,subprocess,json
+
+# check configuration values
+if not 'acslogin' in os.environ:
+    print >> sys.stderr, "error: acslogin is not defined in the environment"
+    exit(1)
+acslogin = os.environ['acslogin']
+
+if not 'id_rsa' in os.environ:
+    print >> sys.stderr, "error: id_rsa is not defined in the environment"
+    exit(1)
+id_rsa = os.environ['id_rsa']
+
+if not 'powertotals' in os.environ:
+    print >> sys.stderr, "error: powertotals is not defined in the environment"
+    exit(1)
+powertotals = json.loads(os.environ['powertotals'])
+
+# get output from the ACS
+ssh_proc = subprocess.Popen(("ssh", acslogin, "-i", id_rsa, "dummy"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+(acsout,acserr) = ssh_proc.communicate()
+# XXX: ssh seems to exit with exit status 1, when the remote command runs just succesful... why? stderr is empty!
+#if ssh_proc.returncode != 0:
+#    print >> sys.stderr, acserr
+#    exit(1)
+
+# try to parse the output and gather values
+
+# power1: RMS current: 3.7A. Maximum current: 4.1A. Minimum current: 0.0A. Average current: 2.5A.
+regex_current = re.compile(r'^(?P<pduid>\w+): RMS current: (?P<amp>[\d\.]+)A')
+# power1: Temperature on T1: 42.0 C (107.6 F). Maximum: 43.0 C (109.4 F). Minimum: 39.0 C (102.2 F). Average: 39.0 C (102.2 F).
+regex_temp = re.compile(r'^(?P<pduid>\w+): Temperature on [TL]1: (?P<temp>[\d\.]+) C')
+
+amps = {}
+temps = {}
+
+for line in acsout.split('\n'):
+    m = regex_current.match(line)
+    if m:
+        (pduid,amp) = m.groups()
+        amps[pduid] = float(amp)
+    m = regex_temp.match(line)
+    if m:
+        (pduid,temp) = m.groups()
+        temps[pduid] = float(temp)
+
+# print configuration info for graphs ...
+
+argc = len(sys.argv)
+if argc > 1 and sys.argv[1] == 'config':
+    print """multigraph pdu_current
+graph_args --base 1000 -l 0
+graph_vlabel Amperes
+graph_title PDU Current
+graph_category Power
+graph_info This graph shows the current drawn from the datacenter power feed by our PDUs"""
+    for pduname in sorted(amps.keys()):
+        print """%s.label %s
+%s.draw LINE2
+%s.type GAUGE
+%s.min 0""" % (pduname,pduname,pduname,pduname,pduname)
+    for total in sorted(powertotals.keys()):
+        print """%s.label %s
+%s.draw LINE2
+%s.type GAUGE
+%s.min 0
+%s.info %s""" % (total,total,total,total,total,total,powertotals[total].get("description",total))
+    print
+    print """multigraph pdu_temperature
+graph_args --base 1000 -l 0
+graph_vlabel Celcius
+graph_title PDU Temperature
+graph_category Power
+graph_info This graph shows the environment temperature at our PDUs"""
+    for pduname in sorted(amps.keys()):
+        print """%s.label %s
+%s.draw LINE2
+%s.type GAUGE
+%s.min 0""" % (pduname,pduname,pduname,pduname,pduname)
+    exit(0)
+
+# ... or print values
+
+print "multigraph pdu_current"
+for pduname in sorted(amps.keys()):
+    print "%s.value %s" % (pduname,amps[pduname])
+for total in sorted(powertotals.keys()):
+    print "%s.value %s" % (total, sum([amps[pduname] for pduname in powertotals[total]['pdus']]))
+print
+print "multigraph pdu_temperature"
+for pduname in sorted(temps.keys()):
+    print "%s.value %s" % (pduname,temps[pduname])
+
+# vim:ft=python

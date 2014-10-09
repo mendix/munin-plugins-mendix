@@ -1,0 +1,158 @@
+#!/usr/bin/python
+#
+# Usage:
+# - symlink with cluster name, e.g. xenguests_foobar -> xenguests_
+# - put xenguests config location in environment in plugin conf:
+#   [xenguests_foobar]
+#   user foobar
+#   env.xenguests_path /foo/bar/xenguests
+
+import os
+import sys
+import yaml
+
+
+class Cluster():
+
+    def __init__(self, xenguests_path, name):
+        self.xenguests_path = xenguests_path
+        self.name = name
+
+        metafile = os.path.join(xenguests_path, 'meta', "%s.yaml" % name)
+        meta = yaml.load(open(metafile))
+
+        self.dom0_mem_warn = meta['dom0_mem_warn']
+        self.dom0_mem_crit = meta['dom0_mem_crit']
+        self.dom0_mem_total = meta['dom0_mem_total']
+        self.n_plus = meta['n_plus']
+
+        self.dom0_info = self._get_dom0_info(meta)
+        self.dom0_mem_used = self._get_dom0_mem_used(self.dom0_info)
+
+    def _get_dom0_info(self, meta):
+        dom0s = {}
+        for dom0 in meta['dom0s']:
+            dom0s[dom0] = self._get_domU_info(dom0)
+        return dom0s
+
+    def _get_domU_info(self, dom0):
+        domUs = {}
+        dom0_dir = os.path.join(self.xenguests_path, 'dom0s', dom0)
+        for domU in os.listdir(dom0_dir):
+            if domU == '.info':  # XXX
+                continue
+            if domU.endswith('.swp'):
+                continue
+            domUs[domU] = self._read_domU_config(os.path.join(dom0_dir, domU))
+        return domUs
+
+    def _read_domU_config(self, domU_filename):
+        config = {}
+        execfile(domU_filename, {}, config)
+        return config.copy()
+
+    def _get_dom0_mem_used(self, dom0s):
+        dom0_mem_used = {}
+        for dom0 in dom0s.iterkeys():
+            dom0_mem_used[dom0] = sum([domU['memory'] for domU in dom0s[dom0].itervalues()])
+        return dom0_mem_used
+
+    def get_dom0s(self):
+        return self.dom0_info.keys()
+
+    def get_dom0_mem_used(self, dom0):
+        return self.dom0_mem_used[dom0]
+
+    def get_dom0_mem_warn(self):
+        return self.dom0_mem_warn
+
+    def get_dom0_mem_crit(self):
+        return self.dom0_mem_crit
+
+    def get_cluster_mem_used(self):
+        return sum(self.dom0_mem_used.values())
+
+    def get_cluster_mem_warn(self):
+        return (len(self.get_dom0s()) - self.n_plus) * self.dom0_mem_warn
+
+    def get_cluster_mem_crit(self):
+        return (len(self.get_dom0s()) - self.n_plus) * self.dom0_mem_crit
+
+
+def munin_config(cluster):
+    print("multigraph xenguests_total_mem_%s" % cluster.name)
+    print("graph_args --base 1024 -l 0")
+    print("graph_vlabel bytes")
+    print("graph_title %s - cluster xen memory usage" % cluster.name)
+    print("graph_category Xen")
+    print("graph_info This graph shows the total amount of memory used for virtual machines in "
+          "cluster %s" % cluster.name)
+    print("used.label used memory")
+    print("used.draw LINE2")
+    print("used.info Total memory used by virtual machines")
+    print("used.type GAUGE")
+    print("used.min 0")
+    print("warn.label warning level")
+    print("warn.draw LINE1")
+    print("warn.info Warning usage level (think about installing more dom0s)")
+    print("warn.type GAUGE")
+    print("warn.min 0")
+    print("crit.label critical level")
+    print("crit.draw LINE1")
+    print("crit.info Critical usage level (e.g. no N+1 any more)")
+    print("crit.type GAUGE")
+    print("crit.min 0")
+    print("")
+
+    print("multigraph xenguests_mem_per_dom0_%s" % cluster.name)
+    print("graph_args --base 1024 -l 0")
+    print("graph_vlabel bytes")
+    print("graph_title %s - memory usage per dom0" % cluster.name)
+    print("graph_category Xen")
+    print("graph_info This graph shows the amount of memory used for virtual machines in "
+          "cluster %s, per physical server" % cluster.name)
+    for dom0 in cluster.get_dom0s():
+        short_name = dom0.split('.')[0]
+        print("%s.label %s" % (short_name, short_name))
+        print("%s.draw LINE1" % short_name)
+        print("%s.info Memory used for domUs on %s" % (short_name, short_name))
+        print("%s.type GAUGE" % short_name)
+        print("%s.min 0" % short_name)
+    print("warn.label warning level")
+    print("warn.draw LINE1")
+    print("warn.info Warning usage level (think about migrating some domUs)")
+    print("warn.type GAUGE")
+    print("warn.min 0")
+    print("crit.label critical level")
+    print("crit.draw LINE1")
+    print("crit.info Critical usage level (dom0 is too much filled up with domUs)")
+    print("crit.type GAUGE")
+    print("crit.min 0")
+    print("")
+
+
+def munin_values(cluster):
+    MiB = 1048576
+    print("multigraph xenguests_total_mem_%s" % cluster.name)
+    print("used.value %s" % (cluster.get_cluster_mem_used() * MiB))
+    print("warn.value %s" % (cluster.get_cluster_mem_warn() * MiB))
+    print("crit.value %s" % (cluster.get_cluster_mem_crit() * MiB))
+    print("")
+
+    print("multigraph xenguests_mem_per_dom0_%s" % cluster.name)
+    for dom0 in cluster.get_dom0s():
+        short_name = dom0.split('.')[0]
+        print("%s.value %s" % (short_name, cluster.get_dom0_mem_used(dom0) * MiB))
+    print("warn.value %s" % (cluster.get_dom0_mem_warn() * MiB))
+    print("crit.value %s" % (cluster.get_dom0_mem_crit() * MiB))
+
+
+if __name__ == "__main__":
+    clustername = os.path.basename(sys.argv[0]).replace('xenguests_', '')
+    xenguests_path = os.getenv('xenguests_path', '')
+    cluster = Cluster(xenguests_path, clustername)
+
+    if len(sys.argv) > 1 and sys.argv[1] == "config":
+        munin_config(cluster)
+    else:
+        munin_values(cluster)
