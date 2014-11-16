@@ -1,3 +1,9 @@
+munin-plugins-mendix (9-1) unstable; urgency=low
+
+  * Adjust mxruntime_ to m2ee-tools internal API change
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Sun, 16 Nov 2014 02:05:48 +0100
+
 munin-plugins-mendix (0.8-1) unstable; urgency=low
 
   * Add xenguests plugin to monitor xen memory usage
