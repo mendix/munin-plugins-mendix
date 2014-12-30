@@ -1,3 +1,9 @@
+munin-plugins-mendix (9-3) unstable; urgency=medium
+
+  * Breaks: python-m2ee (<< 0.5.11~)
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Tue, 30 Dec 2014 15:24:48 +0100
+
 munin-plugins-mendix (9-2) unstable; urgency=medium
 
   * S309560: Break python-m2ee (< 0.5.11~pre1-1)
