@@ -9,6 +9,7 @@ Vcs-Git: git://github.com/mendix/munin-plugins-mendix.git
 Package: munin-plugins-mendix
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, munin-node
-Suggests: python-m2ee (>= 0.5.3-2)
+Breaks: python-m2ee (< 0.5.11~pre1-1)
+Suggests: python-m2ee (>= 0.5.11~pre1-1)
 Description: Plugins for Munin
  This package provides various plugins for Munin.
