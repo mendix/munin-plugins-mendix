@@ -1,3 +1,10 @@
+munin-plugins-mendix (10-1) unstable; urgency=medium
+
+  * S410539 Create new graph that shows avg mem / domU on a dom0
+  * S399972 Include xen_cpu_usage plugin
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Sun, 08 Feb 2015 18:21:29 +0100
+
 munin-plugins-mendix (9-3) unstable; urgency=medium
 
   * Breaks: python-m2ee (<< 0.5.11~)
