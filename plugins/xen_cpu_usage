@@ -54,7 +54,8 @@ def write_state_file(cur):
 
 
 def munin_config():
-    print("graph_args --base 1000 -l 0 -u %s --units-exponent 0" % (get_nr_cpus() * 100))
+    upper_limit = get_nr_cpus() * 100
+    print("graph_args --base 1000 -l 0 -u %s --units-exponent 0" % upper_limit)
     print("graph_vlabel %")
     print("graph_title Xen domains CPU Usage")
     print("graph_category xen")
@@ -64,6 +65,7 @@ def munin_config():
     print("cpu.draw LINE1")
     print("cpu.type GAUGE")
     print("cpu.min 0")
+    print("cpu.line %s:ff0000" % upper_limit)
 
 
 def munin_values():
