@@ -34,7 +34,7 @@ def get_cpu_seconds(prev, cur):
     if prev is None:
         return None
 
-    cur_domUs = set(cur.keys())
+    cur_domUs = set([s.replace('migrating-', '', 1) for s in cur.keys()])
     prev_domUs = set(prev.keys())
 
     new_domUs = (cur_domUs - prev_domUs)
