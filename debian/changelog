@@ -1,3 +1,11 @@
+munin-plugins-mendix (10.2-1) unstable; urgency=medium
+
+  * xen_cpu_usage: Fix cpu spike caused by renaming domU before migration
+  * xen_cpu_usage: Moar migrating fix and after-reboot negatives prevention
+  * xen_cpu_usage: handle convert to float as early as possible
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Tue, 10 Feb 2015 18:46:04 +0100
+
 munin-plugins-mendix (10.1-1) unstable; urgency=medium
 
   * S399972 xen_cpu_usage: start with empty value instead of 0
