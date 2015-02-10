@@ -1,3 +1,10 @@
+munin-plugins-mendix (10.1-1) unstable; urgency=medium
+
+  * S399972 xen_cpu_usage: start with empty value instead of 0
+  * S399972 xen_cpu_usage: plot upper limit red line
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Tue, 10 Feb 2015 12:55:12 +0100
+
 munin-plugins-mendix (10-1) unstable; urgency=medium
 
   * S410539 Create new graph that shows avg mem / domU on a dom0
