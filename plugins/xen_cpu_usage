@@ -16,7 +16,8 @@ def get_nr_cpus():
 
 
 def get_cur():
-    do_xm_list = subprocess.Popen("""xm list | tail -n +2 | awk '{ print $1, $6 }'""",
+    do_xm_list = subprocess.Popen("""xm list | tail -n +2 | awk '{ print $1, $6 }' | """
+                                  """sed 's/migrating-//'""",
                                   stdout=subprocess.PIPE, stderr=None, shell=True)
     (stdoutdata, stderrdata) = do_xm_list.communicate()
     return dict([x.split() for x in stdoutdata.splitlines()])
@@ -30,21 +31,13 @@ def get_prev():
         return None
 
 
+def get_domU_cpu_seconds(prev, cur, domU):
+    seconds = float(cur[domU]) - float(prev.get(domU, 0))
+    return seconds if seconds >= 0 else 0
+
+
 def get_cpu_seconds(prev, cur):
-    if prev is None:
-        return None
-
-    cur_domUs = set([s.replace('migrating-', '', 1) for s in cur.keys()])
-    prev_domUs = set(prev.keys())
-
-    new_domUs = (cur_domUs - prev_domUs)
-    both_domUs = (prev_domUs & cur_domUs)
-
-    cpu_seconds = 0
-    cpu_seconds += sum([float(cur[domU]) for domU in new_domUs])
-    cpu_seconds += sum([float(cur[domU]) - float(prev[domU]) for domU in both_domUs])
-
-    return cpu_seconds
+    return sum([get_domU_cpu_seconds(prev, cur, domU) for domU in cur.keys()])
 
 
 def write_state_file(cur):
@@ -71,8 +64,8 @@ def munin_config():
 def munin_values():
     prev = get_prev()
     cur = get_cur()
-    cpu_seconds = get_cpu_seconds(prev, cur)
-    if cpu_seconds is not None:
+    if prev is not None:
+        cpu_seconds = get_cpu_seconds(prev, cur)
         percentage = (cpu_seconds / poll_interval) * 100
         print("cpu.value %s" % percentage)
     write_state_file(cur)
