@@ -9,17 +9,17 @@ poll_interval = 300
 
 
 def get_nr_cpus():
-    do_xm_info = subprocess.Popen("""xm info | grep nr_cpus | awk '{ print $NF }'""",
+    do_xen_info = subprocess.Popen("""xen info | grep nr_cpus | awk '{ print $NF }'""",
                                   stdout=subprocess.PIPE, stderr=None, shell=True)
-    (stdoutdata, stderrdata) = do_xm_info.communicate()
+    (stdoutdata, stderrdata) = do_xen_info.communicate()
     return int(stdoutdata)
 
 
 def get_cur():
-    do_xm_list = subprocess.Popen("""xm list | tail -n +2 | awk '{ print $1, $6 }' | """
-                                  """sed 's/migrating-//'""",
+    do_xen_list = subprocess.Popen("""xen list | tail -n +2 | awk '{ print $1, $6 }' | """
+                                   """sed 's/migrating-//'""",
                                   stdout=subprocess.PIPE, stderr=None, shell=True)
-    (stdoutdata, stderrdata) = do_xm_list.communicate()
+    (stdoutdata, stderrdata) = do_xen_list.communicate()
     cur = {}
     for line in stdoutdata.splitlines():
         name, seconds = line.split()
