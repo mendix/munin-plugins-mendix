@@ -1,3 +1,9 @@
+munin-plugins-mendix (10.3-1) unstable; urgency=medium
+
+  * plugins/xen_cpu_usage: add support for xl
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Mon, 01 Jun 2015 18:53:45 +0200
+
 munin-plugins-mendix (10.2-1) unstable; urgency=medium
 
   * xen_cpu_usage: Fix cpu spike caused by renaming domU before migration
