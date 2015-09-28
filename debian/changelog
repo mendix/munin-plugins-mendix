@@ -1,3 +1,9 @@
+munin-plugins-mendix (10.4-1) unstable; urgency=medium
+
+  * S509089 xen_cpu_usage: fix live migration bug
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Mon, 28 Sep 2015 22:59:34 +0200
+
 munin-plugins-mendix (10.3-1) unstable; urgency=medium
 
   * plugins/xen_cpu_usage: add support for xl
