@@ -8,23 +8,37 @@ state_file = '/var/lib/munin-node/plugin-state/root/xen_cpu_usage.state'
 poll_interval = 300
 
 
-def get_nr_cpus():
-    do_xen_info = subprocess.Popen("""xen info | grep nr_cpus | awk '{ print $NF }'""",
-                                  stdout=subprocess.PIPE, stderr=None, shell=True)
-    (stdoutdata, stderrdata) = do_xen_info.communicate()
-    return int(stdoutdata)
-
-
-def get_cur():
-    do_xen_list = subprocess.Popen("""xen list | tail -n +2 | awk '{ print $1, $6 }' | """
-                                   """sed 's/migrating-//'""",
-                                  stdout=subprocess.PIPE, stderr=None, shell=True)
-    (stdoutdata, stderrdata) = do_xen_list.communicate()
-    cur = {}
+def xen_info():
+    proc = subprocess.Popen(['xen', 'info'], stdout=subprocess.PIPE, stderr=None)
+    (stdoutdata, stderrdata) = proc.communicate()
+    dom0 = {}
     for line in stdoutdata.splitlines():
-        name, seconds = line.split()
-        cur[name] = float(seconds)
-    return cur
+        fields = line.split()
+        dom0[fields[0]] = fields[2]
+    return dom0
+
+
+def xen_list():
+    proc = subprocess.Popen(['xen', 'list'], stdout=subprocess.PIPE, stderr=None)
+    (stdoutdata, stderrdata) = proc.communicate()
+    domUs = {}
+    for line in stdoutdata.splitlines()[1:]:
+        fields = line.split()
+        name = fields[0]
+        if name.startswith('migrating-'):
+            name = name[10:]
+        elif name.endswith('--incoming'):
+            continue
+        domU = {
+            'name': name,
+            'id': fields[1],
+            'memory': fields[2],
+            'vcpus': fields[3],
+            'state': fields[4],
+            'seconds': float(fields[5]),
+        }
+        domUs[domU['name']] = domU
+    return domUs
 
 
 def get_prev():
@@ -35,13 +49,17 @@ def get_prev():
         return None
 
 
-def get_domU_cpu_seconds(prev, cur, domU):
-    seconds = cur[domU] - prev.get(domU, 0)
-    return seconds if seconds >= 0 else 0
+def get_domU_cpu_seconds(prev_domU, cur_domU):
+    if prev_domU is None and cur_domU['state'] == '------':
+        return 0  # special case wheezy live migration incoming domU
+    if prev_domU is None:
+        return cur_domU['seconds']
+    increase = cur_domU['seconds'] - prev_domU['seconds']
+    return increase if increase >= 0 else 0
 
 
 def get_cpu_seconds(prev, cur):
-    return sum([get_domU_cpu_seconds(prev, cur, domU) for domU in cur.keys()])
+    return sum([get_domU_cpu_seconds(prev.get(name, None), cur.get(name)) for name in cur.keys()])
 
 
 def write_state_file(cur):
@@ -51,7 +69,8 @@ def write_state_file(cur):
 
 
 def munin_config():
-    upper_limit = get_nr_cpus() * 100
+    dom0_info = xen_info()
+    upper_limit = dom0_info['nr_cpus'] * 100
     print("graph_args --base 1000 -l 0 -u %s --units-exponent 0" % upper_limit)
     print("graph_vlabel %")
     print("graph_title Xen domains CPU Usage")
@@ -67,7 +86,7 @@ def munin_config():
 
 def munin_values():
     prev = get_prev()
-    cur = get_cur()
+    cur = xen_list()
     if prev is not None:
         cpu_seconds = get_cpu_seconds(prev, cur)
         percentage = (cpu_seconds / poll_interval) * 100
@@ -75,8 +94,11 @@ def munin_values():
     write_state_file(cur)
 
 
-if __name__ == "__main__":
+def main():
     if len(sys.argv) > 1 and sys.argv[1] == "config":
         munin_config()
     else:
         munin_values()
+
+if __name__ == "__main__":
+    main()
