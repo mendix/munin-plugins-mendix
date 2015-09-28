@@ -39,7 +39,7 @@ class Cluster():
         domUs = {}
         dom0_dir = os.path.join(self.xenguests_path, 'dom0s', dom0)
         for domU in os.listdir(dom0_dir):
-            if domU == '.info':  # XXX
+            if domU.startswith('.'):  # XXX^2
                 continue
             if domU.endswith('.swp'):
                 continue
