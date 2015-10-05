@@ -1,3 +1,11 @@
+munin-plugins-mendix (10.7-1) unstable; urgency=medium
+
+  * xenguests_: remove avg_domu_size
+  * Add munin btrfs usage plugin
+  * Empty conffiles because it's not maintained
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Mon, 05 Oct 2015 11:04:03 +0200
+
 munin-plugins-mendix (10.6-1) unstable; urgency=medium
 
   * S509089 .info is replaced with .keep
