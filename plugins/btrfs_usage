@@ -1,0 +1,172 @@
+#!/usr/bin/python
+
+import collections
+import re
+import subprocess
+import sys
+
+
+def btrfs_mounts():
+    proc = subprocess.Popen(('grep', 'btrfs', '/proc/mounts'),
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env={"PATH": "/bin:/sbin"})
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0:
+        print('grep btrfs /proc/mounts failed: %s, stderr: %s' %
+              (stdout, stderr))
+        sys.exit(-1)
+
+    return [line.split()[1] for line in stdout.splitlines()]
+
+
+def btrfs_fi_df(mountpoint):
+    proc = subprocess.Popen(('btrfs', 'fi', 'df', '-b', mountpoint),
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env={"PATH": "/bin:/sbin"})
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0:
+        print('btrfs fi df %s failed: stdout: %s, stderr: %s' %
+              (mountpoint, stdout, stderr))
+        sys.exit(-1)
+
+    re_df = re.compile(r'(?P<alloc_type>\w+),.*total=(?P<total>\d+), used=(?P<used>\d+)')
+    allocated = collections.OrderedDict()
+    used = collections.OrderedDict()
+    for line in stdout.splitlines():
+        match = re_df.match(line)
+        if match is None:
+            print('could not match btrfs fi df output: %s' % line)
+            sys.exit(-1)
+        alloc_type = match.group('alloc_type').lower()
+        allocated[alloc_type] = allocated.get(alloc_type, 0) + int(match.group('total'))
+        used[alloc_type] = used.get(alloc_type, 0) + int(match.group('used'))
+
+    return (allocated, used)
+
+
+def btrfs_fi_show(mountpoint):
+    proc = subprocess.Popen(('btrfs', 'fi', 'show', mountpoint),
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            env={"PATH": "/bin:/sbin"})
+    stdout, stderr = proc.communicate()
+    if proc.returncode != 0:
+        print('btrfs fi show %s failed: stdout: %s, stderr: %s' %
+              (mountpoint, stdout, stderr))
+        sys.exit(-1)
+
+    re_fsid = re.compile(r'Label.*uuid: (?P<fsid>[0-9a-f-]{36})')
+    re_devid = re.compile(r'.*size (?P<total>[\d.]+)(?P<total_kmgt>[KMGT])iB '
+                          'used (?P<allocated>[\d.]+)(?P<allocated_kmgt>[KMGT])iB '
+                          'path (?P<device>.+)')
+    total = 0
+    fsid = None
+    for line in stdout.splitlines():
+        match_devid = re_devid.match(line)
+        if match_devid is not None:
+            total = total + to_bytes(float(match_devid.group('total')),
+                                     match_devid.group('total_kmgt'))
+            continue
+        match_fsid = re_fsid.match(line)
+        if match_fsid is not None:
+            fsid = match_fsid.group('fsid').replace('-', '_')
+
+    return (total, fsid)
+
+
+def to_bytes(size, kgmt):
+    iB = {'K': 1, 'M': 2, 'G': 3, 'T': 4}
+    return int(size * 1024**iB[kgmt])
+
+
+def colours():
+    colours = collections.deque([
+        '33FF33', '00CC00',  # green
+        'FFFF33', 'CCCC00',  # yellow
+        '3399FF', '0000CC',  # blue
+        'FF3333', 'CC0000',  # red
+        'FF33FF', 'CC00CC',  # purple
+    ])
+    while True:
+        yield colours[0]
+        colours.rotate(-1)
+
+
+def draw_type():
+    yield 'AREA'
+    while True:
+        yield 'STACK'
+
+
+def munin_config(fsinfo):
+    for fsid in fsinfo:
+        fs = fsinfo[fsid]
+        print("multigraph btrfs_usage_%s" % fs['fsid'])
+        print("graph_args --base 1024 -l 0")
+        print("graph_vlabel bytes")
+        print("graph_title btrfs space usage for %s" % fs['mountpoint'])
+        print("graph_category disk")
+        print("graph_info This graph shows how btrfs uses available space")
+        draw = draw_type()
+        colour = colours()
+        for alloc_type in fs['allocated']:
+            print("%s_used.label Used %s" % (alloc_type, alloc_type))
+            print("%s_used.draw %s" % (alloc_type, next(draw)))
+            print("%s_used.info Used %s" % (alloc_type, alloc_type))
+            print("%s_used.colour %s" % (alloc_type, next(colour)))
+            print("%s_unused.label Unused %s" % (alloc_type, alloc_type))
+            print("%s_unused.draw %s" % (alloc_type, next(draw)))
+            print("%s_unused.info Unused %s" % (alloc_type, alloc_type))
+            print("%s_unused.colour %s" % (alloc_type, next(colour)))
+        print("unallocated.label Unallocated")
+        print("unallocated.draw STACK")
+        print("unallocated.info Not allocated raw space")
+        print("unallocated.colour FFFFFF")
+        print("total.label Total")
+        print("total.draw LINE2")
+        print("total.info Total raw space")
+        print("total.colour 000000")
+        print("")
+
+
+def munin_values(fsinfo):
+    for fsid in fsinfo:
+        fs = fsinfo[fsid]
+        print("multigraph btrfs_usage_%s" % fs['fsid'])
+        total_allocated = 0
+        for alloc_type in fs['allocated']:
+            used = fs['used'][alloc_type]
+            allocated = fs['allocated'][alloc_type]
+            total_allocated = total_allocated + allocated
+            unused = allocated - used
+            print("%s_used.value %s" % (alloc_type, used))
+            print("%s_unused.value %s" % (alloc_type, unused))
+        total = fs['total']
+        unallocated = total - total_allocated
+        print("unallocated.value %s" % unallocated)
+        print("total.value %s" % total)
+        print("")
+
+
+def main():
+    fsinfo = collections.OrderedDict()
+
+    for mountpoint in btrfs_mounts():
+        total, fsid = btrfs_fi_show(mountpoint)
+        allocated, used = btrfs_fi_df(mountpoint)
+
+        if fsid not in fsinfo:
+            fsinfo[fsid] = {
+                'fsid': fsid,
+                'total': total,
+                'allocated': allocated,
+                'used': used,
+                'mountpoint': mountpoint,
+            }
+
+    if len(sys.argv) > 1 and sys.argv[1] == "config":
+        munin_config(fsinfo)
+    else:
+        munin_values(fsinfo)
+
+if __name__ == "__main__":
+    main()
