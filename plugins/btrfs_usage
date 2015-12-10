@@ -55,8 +55,8 @@ def btrfs_fi_show(mountpoint):
         sys.exit(-1)
 
     re_fsid = re.compile(r'Label.*uuid: (?P<fsid>[0-9a-f-]{36})')
-    re_devid = re.compile(r'.*size (?P<total>[\d.]+)(?P<total_kmgt>[KMGT])iB '
-                          'used (?P<allocated>[\d.]+)(?P<allocated_kmgt>[KMGT])iB '
+    re_devid = re.compile(r'.*size (?P<total>[\d.]+)(?P<total_kmgt>([KMGT]i)?)B '
+                          'used (?P<allocated>[\d.]+)(?P<allocated_kmgt>([KMGT]i)?)B '
                           'path (?P<device>.+)')
     total = 0
     fsid = None
@@ -74,7 +74,9 @@ def btrfs_fi_show(mountpoint):
 
 
 def to_bytes(size, kgmt):
-    iB = {'K': 1, 'M': 2, 'G': 3, 'T': 4}
+    if kgmt == '':
+        return int(size)
+    iB = {'Ki': 1, 'Mi': 2, 'Gi': 3, 'Ti': 4}
     return int(size * 1024**iB[kgmt])
 
 
