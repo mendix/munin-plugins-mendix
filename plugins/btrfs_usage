@@ -29,7 +29,7 @@ def btrfs_fi_df(mountpoint):
               (mountpoint, stdout, stderr))
         sys.exit(-1)
 
-    re_df = re.compile(r'(?P<alloc_type>\w+),.*total=(?P<total>\d+), used=(?P<used>\d+)')
+    re_df = re.compile(r'(?P<alloc_type>\w+), (?P<profile>[\w\d]+): total=(?P<total>\d+), used=(?P<used>\d+)')
     allocated = collections.OrderedDict()
     used = collections.OrderedDict()
     for line in stdout.splitlines():
@@ -38,10 +38,22 @@ def btrfs_fi_df(mountpoint):
             print('could not match btrfs fi df output: %s' % line)
             sys.exit(-1)
         alloc_type = match.group('alloc_type').lower()
-        allocated[alloc_type] = allocated.get(alloc_type, 0) + int(match.group('total'))
-        used[alloc_type] = used.get(alloc_type, 0) + int(match.group('used'))
+        profile = match.group('profile')
+        allocated[alloc_type] = allocated.get(alloc_type, 0) + to_profile_bytes(match.group('total'), profile)
+        used[alloc_type] = used.get(alloc_type, 0) + to_profile_bytes(match.group('used'), profile)
 
     return (allocated, used)
+
+
+def to_profile_bytes(size, profile):
+    p = {
+        'single': 1,
+        'RAID0': 1,
+        'RAID1': 2,
+        'DUP': 2,
+        'RAID10': 2,
+    }
+    return int(size) * p[profile]
 
 
 def btrfs_fi_show(mountpoint):
@@ -55,8 +67,8 @@ def btrfs_fi_show(mountpoint):
         sys.exit(-1)
 
     re_fsid = re.compile(r'Label.*uuid: (?P<fsid>[0-9a-f-]{36})')
-    re_devid = re.compile(r'.*size (?P<total>[\d.]+)(?P<total_kmgt>[KMGT])iB '
-                          'used (?P<allocated>[\d.]+)(?P<allocated_kmgt>[KMGT])iB '
+    re_devid = re.compile(r'.*size (?P<total>[\d.]+)(?P<total_kmgt>([KMGT]i)?)B '
+                          'used (?P<allocated>[\d.]+)(?P<allocated_kmgt>([KMGT]i)?)B '
                           'path (?P<device>.+)')
     total = 0
     fsid = None
@@ -74,7 +86,9 @@ def btrfs_fi_show(mountpoint):
 
 
 def to_bytes(size, kgmt):
-    iB = {'K': 1, 'M': 2, 'G': 3, 'T': 4}
+    if kgmt == '':
+        return int(size)
+    iB = {'Ki': 1, 'Mi': 2, 'Gi': 3, 'Ti': 4}
     return int(size * 1024**iB[kgmt])
 
 
