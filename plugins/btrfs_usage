@@ -88,6 +88,14 @@ def munin_config(fsinfo):
         print("unallocated.draw STACK")
         print("unallocated.info Not allocated raw space")
         print("unallocated.colour FFFFFF")
+        print("wasted_soft.label Reclaimable non-alloc")
+        print("wasted_soft.draw STACK")
+        print("wasted_soft.info Reclaimable not allocatable")
+        print("wasted_soft.colour BBBBBB")
+        print("wasted_hard.label Non-allocatable")
+        print("wasted_hard.draw STACK")
+        print("wasted_hard.info Non-allocatable")
+        print("wasted_hard.colour 888888")
         print("total.label Total")
         print("total.draw LINE2")
         print("total.info Total raw space")
@@ -108,8 +116,10 @@ def munin_values(fsinfo):
             print("%s_used.value %s" % (alloc_type, used))
             print("%s_unused.value %s" % (alloc_type, unused))
         total = fs['total']
-        unallocated = total - total_allocated
+        unallocated = total - total_allocated - fs['wasted_hard'] - fs['wasted_soft']
         print("unallocated.value %s" % unallocated)
+        print("wasted_soft.value %s" % fs['wasted_soft'])
+        print("wasted_hard.value %s" % fs['wasted_hard'])
         print("total.value %s" % total)
         print("")
 
@@ -126,6 +136,7 @@ def main():
         total = usage.get_total()
         fsid = usage.get_fsid()
         allocated, used = btrfs_allocated_used(usage.data)
+        wasted_hard, wasted_soft = usage.get_wasted()
 
         if fsid not in fsinfo:
             fsinfo[fsid] = {
@@ -133,6 +144,8 @@ def main():
                 'total': total,
                 'allocated': allocated,
                 'used': used,
+                'wasted_hard': wasted_hard,
+                'wasted_soft': wasted_soft,
                 'mountpoint': mountpoint,
             }
 
