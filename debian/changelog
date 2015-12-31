@@ -1,3 +1,11 @@
+munin-plugins-mendix (12-1) unstable; urgency=medium
+
+  * btrfs_usage: start using the btrfs_usage library
+  * btrfs_usage: add support for wasted space
+  * debian/control: suggest python-mx-btrfs for btrfs_usage
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Thu, 31 Dec 2015 13:24:28 +0100
+
 munin-plugins-mendix (11-1) unstable; urgency=medium
 
   * btrfs_usage: handle < 1KiB usage
