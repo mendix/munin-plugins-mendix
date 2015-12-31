@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 import collections
-import re
 import subprocess
 import sys
+from mx_btrfs.btrfs_usage import BtrfsUsage, BtrfsUsageException
 
 
 def btrfs_mounts():
@@ -19,28 +19,17 @@ def btrfs_mounts():
     return [line.split()[1] for line in stdout.splitlines()]
 
 
-def btrfs_fi_df(mountpoint):
-    proc = subprocess.Popen(('btrfs', 'fi', 'df', '-b', mountpoint),
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            env={"PATH": "/bin:/sbin"})
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        print('btrfs fi df %s failed: stdout: %s, stderr: %s' %
-              (mountpoint, stdout, stderr))
-        sys.exit(-1)
-
-    re_df = re.compile(r'(?P<alloc_type>\w+), (?P<profile>[\w\d]+): total=(?P<total>\d+), used=(?P<used>\d+)')
+def btrfs_allocated_used(btrfs_data):
     allocated = collections.OrderedDict()
     used = collections.OrderedDict()
-    for line in stdout.splitlines():
-        match = re_df.match(line)
-        if match is None:
-            print('could not match btrfs fi df output: %s' % line)
-            sys.exit(-1)
-        alloc_type = match.group('alloc_type').lower()
-        profile = match.group('profile')
-        allocated[alloc_type] = allocated.get(alloc_type, 0) + to_profile_bytes(match.group('total'), profile)
-        used[alloc_type] = used.get(alloc_type, 0) + to_profile_bytes(match.group('used'), profile)
+    for alloc_type in ['Data', 'System', 'Metadata']:
+        for profile in btrfs_data[alloc_type].keys():
+            allocated[alloc_type.lower()] = allocated.get(alloc_type, 0) + \
+                to_profile_bytes(btrfs_data[alloc_type][profile]['allocated'], profile)
+            used[alloc_type.lower()] = used.get(alloc_type, 0) + \
+                to_profile_bytes(btrfs_data[alloc_type][profile]['used'], profile)
+    allocated['globalreserve'] = btrfs_data['Overall']['Global reserve']
+    used['globalreserve'] = btrfs_data['Overall']['Global reserve used']
 
     return (allocated, used)
 
@@ -54,42 +43,6 @@ def to_profile_bytes(size, profile):
         'RAID10': 2,
     }
     return int(size) * p[profile]
-
-
-def btrfs_fi_show(mountpoint):
-    proc = subprocess.Popen(('btrfs', 'fi', 'show', mountpoint),
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            env={"PATH": "/bin:/sbin"})
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
-        print('btrfs fi show %s failed: stdout: %s, stderr: %s' %
-              (mountpoint, stdout, stderr))
-        sys.exit(-1)
-
-    re_fsid = re.compile(r'Label.*uuid: (?P<fsid>[0-9a-f-]{36})')
-    re_devid = re.compile(r'.*size (?P<total>[\d.]+)(?P<total_kmgt>([KMGT]i)?)B '
-                          'used (?P<allocated>[\d.]+)(?P<allocated_kmgt>([KMGT]i)?)B '
-                          'path (?P<device>.+)')
-    total = 0
-    fsid = None
-    for line in stdout.splitlines():
-        match_devid = re_devid.match(line)
-        if match_devid is not None:
-            total = total + to_bytes(float(match_devid.group('total')),
-                                     match_devid.group('total_kmgt'))
-            continue
-        match_fsid = re_fsid.match(line)
-        if match_fsid is not None:
-            fsid = match_fsid.group('fsid').replace('-', '_')
-
-    return (total, fsid)
-
-
-def to_bytes(size, kgmt):
-    if kgmt == '':
-        return int(size)
-    iB = {'Ki': 1, 'Mi': 2, 'Gi': 3, 'Ti': 4}
-    return int(size * 1024**iB[kgmt])
 
 
 def colours():
@@ -114,7 +67,7 @@ def draw_type():
 def munin_config(fsinfo):
     for fsid in fsinfo:
         fs = fsinfo[fsid]
-        print("multigraph btrfs_usage_%s" % fs['fsid'])
+        print("multigraph btrfs_usage_%s" % fs['fsid'].replace('-', '_'))
         print("graph_args --base 1024 -l 0")
         print("graph_vlabel bytes")
         print("graph_title btrfs space usage for %s" % fs['mountpoint'])
@@ -135,6 +88,14 @@ def munin_config(fsinfo):
         print("unallocated.draw STACK")
         print("unallocated.info Not allocated raw space")
         print("unallocated.colour FFFFFF")
+        print("wasted_soft.label Reclaimable non-alloc")
+        print("wasted_soft.draw STACK")
+        print("wasted_soft.info Reclaimable not allocatable")
+        print("wasted_soft.colour BBBBBB")
+        print("wasted_hard.label Non-allocatable")
+        print("wasted_hard.draw STACK")
+        print("wasted_hard.info Non-allocatable")
+        print("wasted_hard.colour 888888")
         print("total.label Total")
         print("total.draw LINE2")
         print("total.info Total raw space")
@@ -145,7 +106,7 @@ def munin_config(fsinfo):
 def munin_values(fsinfo):
     for fsid in fsinfo:
         fs = fsinfo[fsid]
-        print("multigraph btrfs_usage_%s" % fs['fsid'])
+        print("multigraph btrfs_usage_%s" % fs['fsid'].replace('-', '_'))
         total_allocated = 0
         for alloc_type in fs['allocated']:
             used = fs['used'][alloc_type]
@@ -155,8 +116,10 @@ def munin_values(fsinfo):
             print("%s_used.value %s" % (alloc_type, used))
             print("%s_unused.value %s" % (alloc_type, unused))
         total = fs['total']
-        unallocated = total - total_allocated
+        unallocated = total - total_allocated - fs['wasted_hard'] - fs['wasted_soft']
         print("unallocated.value %s" % unallocated)
+        print("wasted_soft.value %s" % fs['wasted_soft'])
+        print("wasted_hard.value %s" % fs['wasted_hard'])
         print("total.value %s" % total)
         print("")
 
@@ -165,8 +128,15 @@ def main():
     fsinfo = collections.OrderedDict()
 
     for mountpoint in btrfs_mounts():
-        total, fsid = btrfs_fi_show(mountpoint)
-        allocated, used = btrfs_fi_df(mountpoint)
+        try:
+            usage = BtrfsUsage(mountpoint)
+        except BtrfsUsageException as bue:
+            print bue.msg
+            sys.exit(-1)
+        total = usage.get_total()
+        fsid = usage.get_fsid()
+        allocated, used = btrfs_allocated_used(usage.data)
+        wasted_hard, wasted_soft = usage.get_wasted()
 
         if fsid not in fsinfo:
             fsinfo[fsid] = {
@@ -174,6 +144,8 @@ def main():
                 'total': total,
                 'allocated': allocated,
                 'used': used,
+                'wasted_hard': wasted_hard,
+                'wasted_soft': wasted_soft,
                 'mountpoint': mountpoint,
             }
 
