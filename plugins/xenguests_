@@ -7,6 +7,7 @@
 #   user foobar
 #   env.xenguests_path /foo/bar/xenguests
 
+from collections import OrderedDict
 import os
 import sys
 import yaml
@@ -30,7 +31,7 @@ class Cluster():
         self.dom0_mem_used = self._get_dom0_mem_used(self.dom0_info)
 
     def _get_dom0_info(self, meta):
-        dom0s = {}
+        dom0s = OrderedDict()
         for dom0 in meta['dom0s']:
             dom0s[dom0] = self._get_domU_info(dom0)
         return dom0s
@@ -121,16 +122,6 @@ def munin_config(cluster):
         print("%s.info Memory used for domUs on %s" % (short_name, short_name))
         print("%s.type GAUGE" % short_name)
         print("%s.min 0" % short_name)
-    print("warn.label warning level")
-    print("warn.draw LINE1")
-    print("warn.info Warning usage level (think about migrating some domUs)")
-    print("warn.type GAUGE")
-    print("warn.min 0")
-    print("crit.label critical level")
-    print("crit.draw LINE1")
-    print("crit.info Critical usage level (dom0 is too much filled up with domUs)")
-    print("crit.type GAUGE")
-    print("crit.min 0")
     print("")
 
 
@@ -146,8 +137,6 @@ def munin_values(cluster):
     for dom0 in cluster.get_dom0s():
         short_name = dom0.split('.')[0]
         print("%s.value %s" % (short_name, cluster.get_dom0_mem_used(dom0) * MiB))
-    print("warn.value %s" % (cluster.get_dom0_mem_warn() * MiB))
-    print("crit.value %s" % (cluster.get_dom0_mem_crit() * MiB))
     print("")
 
 
