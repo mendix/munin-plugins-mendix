@@ -1,3 +1,10 @@
+munin-plugins-mendix (13-1) unstable; urgency=medium
+
+  * btrfs_usage: moved to its own package
+  * xenguests_: fix ordering, remove unused totals
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Wed, 29 Jun 2016 16:59:07 +0200
+
 munin-plugins-mendix (12-1) unstable; urgency=medium
 
   * btrfs_usage: start using the btrfs_usage library

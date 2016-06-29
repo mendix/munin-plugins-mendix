@@ -10,6 +10,6 @@ Package: munin-plugins-mendix
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, munin-node
 Breaks: python-m2ee (<< 0.5.11~)
-Suggests: python-m2ee (>= 0.5.11~), python-mx-btrfs
+Suggests: python-m2ee (>= 0.5.11~)
 Description: Plugins for Munin
  This package provides various plugins for Munin.
