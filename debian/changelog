@@ -1,3 +1,9 @@
+munin-plugins-mendix (14-1) unstable; urgency=medium
+
+  * Add TLS Keystore lua lookups plugin
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Mon, 04 Jul 2016 17:23:15 +0200
+
 munin-plugins-mendix (13-1) unstable; urgency=medium
 
   * btrfs_usage: moved to its own package
