@@ -1,3 +1,9 @@
+munin-plugins-mendix (14.1-1) unstable; urgency=medium
+
+  * nginx_keystore_requests: return a consistent ordered list of values
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Mon, 18 Jul 2016 17:02:50 +0200
+
 munin-plugins-mendix (14-1) unstable; urgency=medium
 
   * Add TLS Keystore lua lookups plugin
