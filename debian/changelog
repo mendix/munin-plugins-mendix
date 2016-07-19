@@ -1,3 +1,9 @@
+munin-plugins-mendix (14.2-1) unstable; urgency=medium
+
+  * nginx_keystore_requests: order the config the same way as the values
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Tue, 19 Jul 2016 10:46:12 +0200
+
 munin-plugins-mendix (14.1-1) unstable; urgency=medium
 
   * nginx_keystore_requests: return a consistent ordered list of values
