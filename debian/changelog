@@ -1,3 +1,9 @@
+munin-plugins-mendix (15-1) unstable; urgency=medium
+
+  * nagios plugin
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Mon, 25 Jul 2016 15:31:28 +0200
+
 munin-plugins-mendix (14.2-1) unstable; urgency=medium
 
   * nginx_keystore_requests: order the config the same way as the values
