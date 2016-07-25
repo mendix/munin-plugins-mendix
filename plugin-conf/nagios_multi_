@@ -1,0 +1,4 @@
+[nagios_multi_*]
+user root
+env.binary /usr/sbin/nagios3stats
+env.passive off
