@@ -1,3 +1,9 @@
+munin-plugins-mendix (15.3-1) unstable; urgency=medium
+
+  * nginx_keystore_requests: add not_found statistics
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Tue, 02 Aug 2016 17:20:02 +0200
+
 munin-plugins-mendix (15.2-1) unstable; urgency=medium
 
   * nginx_keystore_requests: prevent negative spikes
