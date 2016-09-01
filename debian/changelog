@@ -1,3 +1,9 @@
+munin-plugins-mendix (16-1) unstable; urgency=medium
+
+  * ovs_dpctl_show: graph openvswitch flow stats
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Thu, 01 Sep 2016 14:28:23 +0200
+
 munin-plugins-mendix (15.3-1) unstable; urgency=medium
 
   * nginx_keystore_requests: add not_found statistics
