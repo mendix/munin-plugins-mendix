@@ -1,0 +1,89 @@
+#!/usr/bin/python
+
+from __future__ import print_function
+import subprocess
+import sys
+
+
+def munin_config():
+    print("multigraph ovs_dpctl_show_hits")
+    print("graph_args --base 1000 -l 0")
+    print("graph_vlabel hits/sec")
+    print("graph_title ovs flow lookup hits")
+    print("graph_category network")
+    print("graph_info OpenVSwitch flow lookup hits")
+    print("hit.label hit")
+    print("hit.draw LINE1")
+    print("hit.info flow lookup hit")
+    print("hit.type DERIVE")
+    print("hit.min 0")
+    print("miss.label miss")
+    print("miss.draw LINE1")
+    print("miss.info flow lookup miss")
+    print("miss.type DERIVE")
+    print("miss.min 0")
+    print("")
+    print("multigraph ovs_dpctl_show_lost")
+    print("graph_args --base 1000 -l 0")
+    print("graph_vlabel lost/sec")
+    print("graph_title ovs flow lookup lost")
+    print("graph_category network")
+    print("graph_info OpenVSwitch flow lookup lost")
+    print("lost.label lost")
+    print("lost.draw LINE1")
+    print("lost.info lost lookup")
+    print("lost.type DERIVE")
+    print("lost.min 0")
+    print("")
+    print("multigraph ovs_dpctl_show_flows")
+    print("graph_args --base 1000 -l 0")
+    print("graph_vlabel flows")
+    print("graph_title ovs flows")
+    print("graph_category network")
+    print("graph_info OpenVSwitch flows")
+    print("flows.label flows")
+    print("flows.draw LINE1")
+    print("flows.info flows")
+    print("flows.type GAUGE")
+    print("masks.label mega flow masks")
+    print("masks.draw LINE1")
+    print("masks.info mega flow masks")
+    print("masks.type GAUGE")
+
+
+def munin_values():
+    proc = subprocess.Popen(['ovs-dpctl', 'show'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdoutdata, stderrdata) = proc.communicate()
+
+    masks_total = 0
+    for line in stdoutdata.splitlines():
+        fields = line.replace(':', ' ').split()
+        if fields[0] == 'lookups':
+            lookups_hit = fields[2]
+            lookups_missed = fields[4]
+            lookups_lost = fields[6]
+        elif fields[0] == 'flows':
+            flows = fields[1]
+        elif fields[0] == 'masks':
+            masks_total = fields[4]
+
+    print("multigraph ovs_dpctl_show_hits")
+    print("hit.value %s" % lookups_hit)
+    print("miss.value %s" % lookups_missed)
+    print("")
+    print("multigraph ovs_dpctl_show_lost")
+    print("lost.value %s" % lookups_lost)
+    print("")
+    print("multigraph ovs_dpctl_show_flows")
+    print("flows.value %s" % flows)
+    print("masks.value %s" % masks_total)
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "config":
+        munin_config()
+    else:
+        munin_values()
+
+if __name__ == "__main__":
+    main()
