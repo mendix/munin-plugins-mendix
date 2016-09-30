@@ -1,3 +1,9 @@
+munin-plugins-mendix (17-1) unstable; urgency=medium
+
+  * xen_cpu_usage: help debugging live migration spikes
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Fri, 30 Sep 2016 13:31:31 +0200
+
 munin-plugins-mendix (16-1) unstable; urgency=medium
 
   * ovs_dpctl_show: graph openvswitch flow stats
