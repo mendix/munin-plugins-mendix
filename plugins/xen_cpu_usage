@@ -3,6 +3,7 @@
 import json
 import subprocess
 import sys
+import time
 
 state_file = '/var/lib/munin-node/plugin-state/root/xen_cpu_usage.state'
 poll_interval = 300
@@ -87,12 +88,26 @@ def munin_config():
     print("cpu.line %s:ff0000" % upper_limit)
 
 
+def debug_dump(prev, cur):
+    timestamp = int(time.time())
+    prev_file = '%s-%s-prev' % (state_file, timestamp)
+    with open(prev_file, 'w') as fd:
+        fd.write(json.dumps(prev))
+    cur_file = '%s-%s-cur' % (state_file, timestamp)
+    with open(cur_file, 'w') as fd:
+        fd.write(json.dumps(cur))
+
+
 def munin_values():
+    dom0_info = xen_info()
+    upper_limit = int(dom0_info['nr_cpus']) * 100
     prev = get_prev()
     cur = xen_list()
     if prev is not None:
         cpu_seconds = get_cpu_seconds(prev, cur)
         percentage = (cpu_seconds / poll_interval) * 100
+        if percentage > upper_limit:
+            debug_dump(prev, cur)
         print("cpu.value %s" % percentage)
     write_state_file(cur)
 
