@@ -33,6 +33,8 @@ def xen_list():
             name = name[10:]
         elif name.endswith('--incoming'):
             continue
+        elif name == '(null)':
+            continue
         domU = {
             'name': name,
             'id': fields[1],
