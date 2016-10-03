@@ -1,3 +1,9 @@
+munin-plugins-mendix (18-1) unstable; urgency=medium
+
+  * xen_cpu_usage: ignore terminating dom with name (null)
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Mon, 03 Oct 2016 16:03:34 +0200
+
 munin-plugins-mendix (17-1) unstable; urgency=medium
 
   * xen_cpu_usage: help debugging live migration spikes
