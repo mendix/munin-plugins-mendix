@@ -35,6 +35,8 @@ def xen_list():
             continue
         elif name == '(null)':
             continue
+        elif name.endswith('--migratedaway'):
+            continue
         domU = {
             'name': name,
             'id': fields[1],
