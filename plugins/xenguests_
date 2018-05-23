@@ -24,7 +24,6 @@ class Cluster():
 
         self.dom0_mem_warn = meta['dom0_mem_warn']
         self.dom0_mem_crit = meta['dom0_mem_crit']
-        self.dom0_mem_total = meta['dom0_mem_total']
         self.n_plus = meta['n_plus']
 
         self.dom0_info = self._get_dom0_info(meta)
