@@ -1,3 +1,10 @@
+munin-plugins-mendix (19-1) unstable; urgency=medium
+
+  * xen_cpu_usage: ignore --migratedaway domU
+  * xenguests_: don't read unused dom0_mem_total
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Wed, 23 May 2018 23:26:21 +0200
+
 munin-plugins-mendix (18-1) unstable; urgency=medium
 
   * xen_cpu_usage: ignore terminating dom with name (null)
