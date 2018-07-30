@@ -1,3 +1,10 @@
+munin-plugins-mendix (20-1) unstable; urgency=medium
+
+  * mxruntime_: Refresh plugin from m2ee source
+  * mxruntime_: Monkeyfix v3 changing primary groups
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Mon, 30 Jul 2018 17:57:48 +0200
+
 munin-plugins-mendix (19-1) unstable; urgency=medium
 
   * xen_cpu_usage: ignore --migratedaway domU
