@@ -1,0 +1,137 @@
+#!/usr/bin/python3
+
+import subprocess
+import sys
+
+
+# Stolen from python-btrfs vvv
+
+pretty_size_units = '_KMGTPE'
+
+
+def pretty_size(size, unit=None, binary=True):
+    """
+    :param int size: Size in bytes.
+    :param str unit: Target unit to display the size in. One of 'kMGTPE'.
+    :param bool binary: If True, use base 1024, else base 1000.
+
+    Example::
+
+        >>> btrfs.utils.pretty_size(1610612736, unit='G')
+        '1.50GiB'
+    """
+    if unit == '':
+        return str(size)
+    base = 1024 if binary else 1000
+    if unit is None:
+        if size == 0:
+            unit = ''
+            unit_offset = 0
+            base = 1000
+        else:
+            unit_offset = 0
+            tmp = size
+            while tmp >= 1024 and unit_offset < len(pretty_size_units) - 1:
+                unit_offset = unit_offset + 1
+                tmp = tmp / 1024
+            unit = pretty_size_units[unit_offset] if unit_offset > 0 else ''
+    else:
+        unit = unit.upper()
+        unit_offset = pretty_size_units.index(unit)
+        if unit == 'K' and base == 1000:
+            unit = 'k'
+    divide_by = base ** unit_offset
+    if divide_by > 0:
+        size = size / divide_by
+    return "{0:.2f}{1}{2}B".format(size, unit, 'i' if base == 1024 and unit != '' else '')
+
+# Stolen from python-btrfs ^^^
+
+
+class DiskInfo:
+    """
+    Attributes:
+        name (str): field name for munin output
+        used (int): amount of bytes used
+        percent (float): percentage of space used
+        description (str): user friendly name e.g. 'Application files'
+        label (str): label for the munin output, adding space limit to description
+    """
+    def __init__(self, mountpoint, description, size, avail):
+        """
+        Args:
+            mountpoint (str): e.g. /srv
+            description (str): user friendly name e.g. 'Application files'
+            size (int): size in bytes
+            avail (int): available space in bytes
+        """
+        self.name = mountpoint.replace('/', '_')
+        self.used = size - avail
+        self.percent = (self.used / size) * 100
+        self.description = description
+        self.label = '{} (max {})'.format(description, pretty_size(size))
+
+
+def get_disk_info():
+    wanted = {
+        '/': 'OS files',
+        '/srv': 'Application files',
+        '/var': 'Database storage',
+        '/var/lib/postgresql': 'Database storage',
+    }
+
+    found = []
+
+    cmd = 'df', '--block-size=1', '--output=target,size,avail'
+    for line in subprocess.check_output(cmd).decode().splitlines()[1:]:
+        mountpoint, size, avail = line.split()
+        if mountpoint in wanted:
+            found.append(DiskInfo(mountpoint, wanted[mountpoint], int(size), int(avail)))
+    return sorted(found, key=lambda _: _.name)
+
+
+def munin_config():
+    print('multigraph appdbnode_df_abs')
+    print("graph_title Disk usage in bytes")
+    print("graph_args --base 1024 -l 0")
+    print("graph_vlabel bytes")
+    print("graph_category mendix")
+    for info in get_disk_info():
+        print("{}.label {}".format(info.name, info.label))
+        print("{}.draw LINE1".format(info.name))
+        print("{}.info Disk usage for {} in bytes".format(info.name, info.description))
+    print("")
+
+    print('multigraph appdbnode_df_percent')
+    print("graph_title Disk usage in percent")
+    print("graph_args --upper-limit 100 -l 0")
+    print("graph_vlabel %")
+    print("graph_scale no")
+    print("graph_category mendix")
+    for info in get_disk_info():
+        print("{}.label {}".format(info.name, info.label))
+        print("{}.draw LINE1".format(info.name))
+        print("{}.info Disk usage for {} in percent".format(info.name, info.description))
+    print("")
+
+
+def munin_values():
+    print('multigraph appdbnode_df_abs')
+    for info in get_disk_info():
+        print('{}.value {}'.format(info.name, info.used))
+    print("")
+
+    print('multigraph appdbnode_df_percent')
+    for info in get_disk_info():
+        print('{}.value {}'.format(info.name, info.percent))
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "config":
+        munin_config()
+    else:
+        munin_values()
+
+
+if __name__ == "__main__":
+    main()
