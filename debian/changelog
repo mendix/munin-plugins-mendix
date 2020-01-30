@@ -1,3 +1,9 @@
+munin-plugins-mendix (21-1) unstable; urgency=medium
+
+  * Add simple disk space plugin for Mendix Cloud v3
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Thu, 30 Jan 2020 10:19:47 +0100
+
 munin-plugins-mendix (20-1) unstable; urgency=medium
 
   * mxruntime_: Refresh plugin from m2ee source
