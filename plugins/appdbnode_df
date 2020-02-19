@@ -52,20 +52,23 @@ class DiskInfo:
     """
     Attributes:
         name (str): field name for munin output
+        mountpoint (str): e.g. /srv
         used (int): amount of bytes used
         percent (float): percentage of space used
         description (str): user friendly name e.g. 'Application files'
         label (str): label for the munin output, adding space limit to description
     """
-    def __init__(self, mountpoint, description, size, avail):
+    def __init__(self, name, mountpoint, description, size, avail):
         """
         Args:
+            name (str): field name for munin output
             mountpoint (str): e.g. /srv
             description (str): user friendly name e.g. 'Application files'
             size (int): size in bytes
             avail (int): available space in bytes
         """
-        self.name = mountpoint.replace('/', '_')
+        self.name = name
+        self.mountpoint = mountpoint
         self.used = size - avail
         self.percent = (self.used / size) * 100
         self.description = description
@@ -74,10 +77,10 @@ class DiskInfo:
 
 def get_disk_info():
     wanted = {
-        '/': 'OS files',
-        '/srv': 'Application files',
-        '/var': 'Database storage',
-        '/var/lib/postgresql': 'Database storage',
+        '/': ('rootfs', 'OS files'),
+        '/srv': ('application', 'Application files'),
+        '/var': ('database', 'Database storage'),
+        '/var/lib/postgresql': ('database', 'Database storage'),
     }
 
     found = []
@@ -86,10 +89,10 @@ def get_disk_info():
     for line in subprocess.check_output(cmd).decode().splitlines()[1:]:
         _, size_kib, _, avail, _, mountpoint = line.split()
         if mountpoint in wanted:
-            description = wanted.pop(mountpoint)
-            found.append(DiskInfo(mountpoint, description,
-                         int(size_kib) * 1024, int(avail) * 1024))
-    return sorted(found, key=lambda _: _.name)
+            name, description = wanted.pop(mountpoint)
+            found.append(DiskInfo(name, mountpoint, description,
+                                  int(size_kib) * 1024, int(avail) * 1024))
+    return sorted(found, key=lambda _: _.mountpoint)
 
 
 def munin_config():
