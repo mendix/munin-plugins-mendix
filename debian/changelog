@@ -1,3 +1,10 @@
+munin-plugins-mendix (22-1) unstable; urgency=medium
+
+  * debian/gbp.conf: adjust for branch rename
+  * Improve simple disk space plugin for Mendix Cloud v3
+
+ -- Hans van Kranenburg <hans.van.kranenburg@mendix.com>  Wed, 19 Feb 2020 15:25:22 +0100
+
 munin-plugins-mendix (21-1) unstable; urgency=medium
 
   * Add simple disk space plugin for Mendix Cloud v3
