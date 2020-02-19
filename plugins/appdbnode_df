@@ -86,7 +86,8 @@ def get_disk_info():
     for line in subprocess.check_output(cmd).decode().splitlines()[1:]:
         _, size_kib, _, avail, _, mountpoint = line.split()
         if mountpoint in wanted:
-            found.append(DiskInfo(mountpoint, wanted[mountpoint],
+            description = wanted.pop(mountpoint)
+            found.append(DiskInfo(mountpoint, description,
                          int(size_kib) * 1024, int(avail) * 1024))
     return sorted(found, key=lambda _: _.name)
 
