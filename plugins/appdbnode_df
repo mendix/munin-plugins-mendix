@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import socket
 import subprocess
 import sys
 
@@ -72,7 +73,11 @@ class DiskInfo:
         self.used = size - avail
         self.percent = (self.used / size) * 100
         self.description = description
-        self.label = '{} (max {})'.format(description, pretty_size(size))
+        self.size = size
+
+    @property
+    def label(self):
+        return '{} (max {})'.format(self.description, pretty_size(self.size))
 
 
 def get_disk_info():
@@ -95,8 +100,21 @@ def get_disk_info():
     return sorted(found, key=lambda _: _.mountpoint)
 
 
+def dirty_yolo_monkey_patch_rackspace_description(disk_info):
+    if len(disk_info) > 1:
+        return
+    hostname = socket.getfqdn()
+    if '.rack.mendixcloud.' not in hostname:
+        return
+    if hostname.startswith('appnode-'):
+        disk_info[0].description = "OS and Application files"
+    elif hostname.startswith('dbnode-'):
+        disk_info[0].description = "OS and Database files"
+
+
 def munin_config():
     disk_info = get_disk_info()
+    dirty_yolo_monkey_patch_rackspace_description(disk_info)
     print('multigraph appdbnode_df_abs')
     print("graph_title Disk usage in bytes")
     print("graph_args --base 1024 -l 0")
