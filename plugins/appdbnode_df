@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import socket
 import subprocess
 import sys
 
@@ -52,51 +53,74 @@ class DiskInfo:
     """
     Attributes:
         name (str): field name for munin output
+        mountpoint (str): e.g. /srv
         used (int): amount of bytes used
         percent (float): percentage of space used
         description (str): user friendly name e.g. 'Application files'
         label (str): label for the munin output, adding space limit to description
     """
-    def __init__(self, mountpoint, description, size, avail):
+    def __init__(self, name, mountpoint, description, size, avail):
         """
         Args:
+            name (str): field name for munin output
             mountpoint (str): e.g. /srv
             description (str): user friendly name e.g. 'Application files'
             size (int): size in bytes
             avail (int): available space in bytes
         """
-        self.name = mountpoint.replace('/', '_')
+        self.name = name
+        self.mountpoint = mountpoint
         self.used = size - avail
         self.percent = (self.used / size) * 100
         self.description = description
-        self.label = '{} (max {})'.format(description, pretty_size(size))
+        self.size = size
+
+    @property
+    def label(self):
+        return '{} (max {})'.format(self.description, pretty_size(self.size))
 
 
 def get_disk_info():
     wanted = {
-        '/': 'OS files',
-        '/srv': 'Application files',
-        '/var': 'Database storage',
-        '/var/lib/postgresql': 'Database storage',
+        '/': ('rootfs', 'OS files'),
+        '/srv': ('application', 'Application files'),
+        '/var': ('database', 'Database storage'),
+        '/var/lib/postgresql': ('database', 'Database storage'),
     }
 
     found = []
 
-    cmd = 'df', '--block-size=1', '--output=target,size,avail'
+    cmd = 'df'
     for line in subprocess.check_output(cmd).decode().splitlines()[1:]:
-        mountpoint, size, avail = line.split()
+        _, size_kib, _, avail, _, mountpoint = line.split()
         if mountpoint in wanted:
-            found.append(DiskInfo(mountpoint, wanted[mountpoint], int(size), int(avail)))
-    return sorted(found, key=lambda _: _.name)
+            name, description = wanted.pop(mountpoint)
+            found.append(DiskInfo(name, mountpoint, description,
+                                  int(size_kib) * 1024, int(avail) * 1024))
+    return sorted(found, key=lambda _: _.mountpoint)
+
+
+def dirty_yolo_monkey_patch_rackspace_description(disk_info):
+    if len(disk_info) > 1:
+        return
+    hostname = socket.getfqdn()
+    if '.rack.mendixcloud.' not in hostname:
+        return
+    if hostname.startswith('appnode-'):
+        disk_info[0].description = "OS and Application files"
+    elif hostname.startswith('dbnode-'):
+        disk_info[0].description = "OS and Database files"
 
 
 def munin_config():
+    disk_info = get_disk_info()
+    dirty_yolo_monkey_patch_rackspace_description(disk_info)
     print('multigraph appdbnode_df_abs')
     print("graph_title Disk usage in bytes")
     print("graph_args --base 1024 -l 0")
     print("graph_vlabel bytes")
     print("graph_category mendix")
-    for info in get_disk_info():
+    for info in disk_info:
         print("{}.label {}".format(info.name, info.label))
         print("{}.draw LINE1".format(info.name))
         print("{}.info Disk usage for {} in bytes".format(info.name, info.description))
@@ -108,7 +132,7 @@ def munin_config():
     print("graph_vlabel %")
     print("graph_scale no")
     print("graph_category mendix")
-    for info in get_disk_info():
+    for info in disk_info:
         print("{}.label {}".format(info.name, info.label))
         print("{}.draw LINE1".format(info.name))
         print("{}.info Disk usage for {} in percent".format(info.name, info.description))
@@ -116,13 +140,14 @@ def munin_config():
 
 
 def munin_values():
+    disk_info = get_disk_info()
     print('multigraph appdbnode_df_abs')
-    for info in get_disk_info():
+    for info in disk_info:
         print('{}.value {}'.format(info.name, info.used))
     print("")
 
     print('multigraph appdbnode_df_percent')
-    for info in get_disk_info():
+    for info in disk_info:
         print('{}.value {}'.format(info.name, info.percent))
 
 
