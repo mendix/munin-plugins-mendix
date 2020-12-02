@@ -1,3 +1,14 @@
+munin-plugins-mendix (23-1) unstable; urgency=medium
+
+  * nginx_keystore_requests: support lua-mendix-keystore v0.4
+  * nginx_keystore_requests: for loop to generate all graph items
+  * nginx_keystore_requests: support TLS Keystore CA lookups
+  * nginx_keystore_requests: support lua-mendix-keystore v0.5
+  * nginx_keystore_requests: add graph for nginx shared memory object usage
+  * nginx_keystore_requests: not_found as the last item of the graph
+
+ -- Pim van den Berg <pim.van.den.berg@mendix.com>  Wed, 02 Dec 2020 09:56:04 +0100
+
 munin-plugins-mendix (22-1) unstable; urgency=medium
 
   * debian/gbp.conf: adjust for branch rename
