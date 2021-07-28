@@ -1,0 +1,213 @@
+#!/usr/bin/python3
+
+"""
+Munin plugin to graph NetApp traffic statistics
+
+Copyright (c) 2021 Mendix Technology
+License: 3-Clause BSD, see LICENSE
+
+This plugin uses the ONTAP REST API to retrieve some statistics about read and
+write iops and throughput for volumes, together with network traffic for
+specific network interfaces. Login credentials, as wel as a list of network
+interfaces to filter on have to be provided via the munin plugin configuration.
+
+The plugin has been written solely for our own needs. E.g. we use volume
+statistics and blatantly call them iSCSI stuff, because the only thing we do is
+put iSCSI luns in volumes. Also, there is no input validation or extensive
+error handling etc so far. If something unexpected happens, the plugin will
+just crash or misbehave. So, make sure permission settings on your config are
+correct.
+
+Symlink the plugin with a hostname at the end to point it to a specific
+cluster.
+
+Example snippet for the plugin configuration:
+
+[netapp_rest_mycluster.example.com]
+env.api_user munin
+env.api_password ******
+"""
+
+import os
+import requests
+import sys
+
+
+def get_netapp_volumes_stats(host, api_user, api_password):
+    r = requests.get('https://{}/api/storage/volumes'.format(host),
+                     params={'fields': 'statistics,space'},
+                     auth=(api_user, api_password))
+    return r.json()
+
+
+def get_netapp_network_stats(host, api_user, api_password):
+    r = requests.get('https://{}/api/network/ethernet/ports'.format(host),
+                     params={'fields': 'statistics,node'},
+                     auth=(api_user, api_password))
+    return r.json()
+
+
+def munin_config_volumes(host, stats):
+    print("host_name {}".format(host))
+    for record in stats['records']:
+        name = record['name']
+        print("multigraph netapp_rest_usage_{}".format(name))
+        print("graph_args --base 1024 -l 0")
+        print("graph_vlabel bytes")
+        print("graph_title disk space usage {}".format(name))
+        print("graph_category disk")
+        print("graph_info This graph shows the disk space of an iscsi volume")
+        print("data.label Used data")
+        print("data.draw AREA")
+        print("data.info Used data")
+        print("data.colour 33FF33")
+        print("snapshots.label Used Snapshot data")
+        print("snapshots.draw STACK")
+        print("snapshots.info Used Snapshot data")
+        print("snapshots.colour CC3377")
+        print("metadata.label Used Metadata")
+        print("metadata.draw STACK")
+        print("metadata.info Used Metadata")
+        print("metadata.colour 3399FF")
+        print("available.label Available")
+        print("available.draw STACK")
+        print("available.info Available")
+        print("available.colour FFFFFF")
+        print("total.label Total")
+        print("total.draw LINE2")
+        print("total.info Total volume space")
+        print("total.colour 000000")
+        print()
+
+    print("multigraph netapp_rest_throughput")
+    print("graph_args --base 1024")
+    print("graph_order read write")
+    print("graph_vlabel Bytes read (-) / write (+) per ${graph_period}")
+    print("graph_title total iSCSI throughput")
+    print("graph_info This graph shows the throughput of iSCSI Operations.")
+    print("graph_category disk")
+    print("read.label Bps")
+    print("read.type DERIVE")
+    print("read.min 0")
+    print("read.graph no")
+    print("read.draw LINE1")
+    print("write.label Bps")
+    print("write.type DERIVE")
+    print("write.min 0")
+    print("write.draw LINE1")
+    print("write.negative read")
+    print()
+
+    print("multigraph netapp_rest_iops")
+    print("graph_order read write")
+    print("graph_vlabel iops read (-) / write (+) per ${graph_period}")
+    print("graph_title total iSCSI Ops")
+    print("graph_info This graph shows the iSCSI Operations per second.")
+    print("graph_category disk")
+    print("read.label iops")
+    print("read.type DERIVE")
+    print("read.min 0")
+    print("read.graph no")
+    print("read.draw LINE1")
+    print("write.label iops")
+    print("write.type DERIVE")
+    print("write.min 0")
+    print("write.draw LINE1")
+    print("write.negative read")
+    print()
+
+
+def munin_config_network(host, stats):
+    records = stats['records']
+    for record in records:
+        node_name = record['node']['name']
+        nic = record['name']
+        print("multigraph netapp_rest_network_throughput_{}_{}".format(node_name, nic)
+              .replace('-', '_'))
+        print("graph_args --base 1000")
+        print("graph_order nw_in nw_out")
+        print("graph_vlabel bits in (-) / out (+) per ${graph_period}")
+        print("graph_title Network throughput {} {}".format(node_name, nic))
+        print("graph_info This graph shows the throughput of network Operations.")
+        print("graph_category network")
+        print("nw_in.label bps")
+        print("nw_in.type DERIVE")
+        print("nw_in.cdef nw_in,8,*")
+        print("nw_in.min 0")
+        print("nw_in.graph no")
+        print("nw_in.draw LINE1")
+        print("nw_out.label bps")
+        print("nw_out.type DERIVE")
+        print("nw_out.cdef nw_out,8,*")
+        print("nw_out.min 0")
+        print("nw_out.draw LINE1")
+        print("nw_out.negative nw_in")
+        print()
+
+
+def munin_values_volumes(stats):
+    records = stats['records']
+    for record in records:
+        name = record['name']
+        total = record['space']['size']
+        snapshots = record['space']['snapshot']['used']
+        metadata = record['space']['metadata']
+        available = record['space']['available']
+        data = total - available - snapshots - metadata
+        print("multigraph netapp_rest_usage_{}".format(name))
+        print("metadata.value {}".format(metadata))
+        print("data.value {}".format(data))
+        print("snapshots.value {}".format(snapshots))
+        print("available.value {}".format(available))
+        print("total.value {}".format(total))
+        print()
+
+    print("multigraph netapp_rest_throughput")
+    throughput_write = sum(record['statistics']['throughput_raw']['write']
+                           for record in records)
+    throughput_read = sum(record['statistics']['throughput_raw']['read']
+                          for record in records)
+    print("read.value {}".format(throughput_read))
+    print("write.value {}".format(throughput_write))
+    print()
+
+    print("multigraph netapp_rest_iops")
+    iops_write = sum(record['statistics']['iops_raw']['write']
+                     for record in records)
+    iops_read = sum(record['statistics']['iops_raw']['read']
+                    for record in records)
+    print("read.value {}".format(iops_read))
+    print("write.value {}".format(iops_write))
+    print()
+
+
+def munin_values_network(stats):
+    records = stats['records']
+    for record in records:
+        node_name = record['node']['name']
+        nic = record['name']
+        print("multigraph netapp_rest_network_throughput_{}_{}".format(node_name, nic)
+              .replace('-', '_'))
+        bytes_in = record['statistics']['throughput_raw']['read']
+        bytes_out = record['statistics']['throughput_raw']['write']
+        print("nw_in.value {}".format(bytes_in))
+        print("nw_out.value {}".format(bytes_out))
+        print()
+
+
+def main():
+    host = os.path.basename(sys.argv[0]).replace('netapp_rest_', '')
+    api_user = os.environ.get('api_user')
+    api_password = os.environ.get('api_password')
+    volumes_stats = get_netapp_volumes_stats(host, api_user, api_password)
+    network_stats = get_netapp_network_stats(host, api_user, api_password)
+    if len(sys.argv) > 1 and sys.argv[1] == 'config':
+        munin_config_volumes(host, volumes_stats)
+        munin_config_network(host, network_stats)
+    else:
+        munin_values_volumes(volumes_stats)
+        munin_values_network(network_stats)
+
+
+if __name__ == '__main__':
+    main()
